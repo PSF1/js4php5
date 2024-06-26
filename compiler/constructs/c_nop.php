@@ -6,7 +6,8 @@ class c_nop extends BaseConstruct
 {
     function emit($unusedParameter = false)
     {
-        return '';
+        // Emit an empty code block.
+        return '{}';
     }
 }
 
