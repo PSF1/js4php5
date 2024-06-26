@@ -252,13 +252,14 @@ class Base
      */
     function getValue()
     {
-        //TODO: Evaluate why this is here, remove if useless. Must be a better way to handle this?
-        // this should never get called, unless we have a logic bug.
-        echo "##useless getValue##";
-        flush();
-        echo "<pre>";
-        debug_print_backtrace();
-        echo "</pre>";
+//        //TODO: Evaluate why this is here, remove if useless. Must be a better way to handle this?
+//        // this should never get called, unless we have a logic bug.
+//        echo "##useless getValue##";
+//        flush();
+//        echo "<pre>";
+//        debug_print_backtrace();
+//        echo "</pre>";
+        // An object value use himself how "value".
         return $this;
     }
 
