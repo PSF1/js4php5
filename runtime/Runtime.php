@@ -90,6 +90,13 @@ class Runtime
     /** @var  jsUriError */
     static $proto_urierror;
 
+  /**
+   * Callback to extend init context.
+   *
+   * @var callable
+   */
+    static $startExtender;
+
     static $idcache;
 
     static function start_once()
@@ -361,10 +368,25 @@ class Runtime
         Runtime::define_function(array("jsMath", "sqrt"), "sqrt", array("x"));
         Runtime::define_function(array("jsMath", "tan"), "tan", array("x"));
         Runtime::pop_context();
-        // extensions to the spec.
+        // Extensions to the spec.
         Runtime::define_variable("global", Runtime::$global);
-        Runtime::define_function(array("Runtime", "write"), "write");
-        Runtime::define_function(array("Runtime", "write"), "print");
+        if (Runtime::$startExtender) {
+          // Allow extend the initial execution context.
+          call_user_func(Runtime::$startExtender);
+        }
+        // We don't like the user can expose any to the exterior.
+        // Use Runtime::setStartExtender() to add this if you like.
+        //Runtime::define_function(array("Runtime", "write"), "write");
+        //Runtime::define_function(array("Runtime", "write"), "print");
+    }
+
+  /**
+   * Set start extender.
+   *
+   * @param callable $callback
+   */
+    static function setStartExtender(callable $callback) {
+      Runtime::$startExtender = $callback;
     }
 
     static function push_context($obj)

@@ -98,6 +98,63 @@ Set the directory where cached files are kept.
 Returns FALSE if the directory is invalid or cannot be written to.
 If not called, the cache dir defaults to the temporary directory reported by PHP (sys_get_temp_dir()).
 
+We can extend the inicial runtime context setting a callable before run:
+
+```
+Runtime::setStartExtender([self::class, 'jsStartExtender']);
+```
+
+And the method callable maybe like this:
+
+```
+... class definition y with section that execute javascript code ...
+
+  /**
+   * Extend runtime context after start it.
+   */
+  public static function jsStartExtender() {
+    // Add Console object with log method.
+    // We can use it with: `Console.log("Hi world!");`
+    $console = new jsConsole();
+    Runtime::define_variable("Console", $console);
+    Runtime::push_context($console);
+    Runtime::define_function([jsConsole::class, 'log'], "log");
+    Runtime::pop_context();
+  }
+
+... Other things in the class ...
+```
+
+And the jsConsole class:
+
+```
+<?php
+
+namespace Drupal\javascript_scripting\JsContext;
+
+use js4php5\runtime\jsObject;
+
+/**
+ * Javascript console object.
+ */
+class jsConsole extends jsObject {
+
+  /**
+   * Log to standard output.
+   */
+  static function log() {
+    $args = func_get_args();
+    $values = [];
+    foreach ($args as $arg) {
+      $s = $arg->toStr();
+      $values[] = $s->value;
+    }
+    echo sprintf("[log] %s\n", implode(', ', $values));
+    flush();
+  }
+
+}
+```
 
 ## Information
 
@@ -108,7 +165,8 @@ The intent:
     - Add PHPdocs everywhere to help with understanding the code and hinting for modern IDEs.
 - Update the code to make use of newer features (PHP 5.4+) where speedups can be made.
 - To fix bugs and make improvements as needed.
-- To make the code fully usable by everybody - not just as a Symfony bundle.
+- To make the code fully usable by everybody - not just as a Symfony bundle. (PSF1 note: I'm using the
+code how a standalone library inside a Drupal 10 module)
 
 Things we've done prior to the initial github upload:
 - Changed license from GPL to MIT.

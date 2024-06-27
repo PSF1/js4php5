@@ -8,6 +8,7 @@ use js4php5\compiler\Compiler;
 use js4php5\runtime\jsAttribute;
 use js4php5\runtime\Base;
 use js4php5\runtime\Runtime;
+use js4php5\runtime\jsObject;
 
 /**
  * Class JS - Main API for JavaScript Compilation and Execution
@@ -119,7 +120,7 @@ class JS
         JS::init();
 
         // Define the main object.
-        $obj = new Object();
+        $obj = new jsObject();
         Runtime::define_variable($objectName, $obj);
 
         // Link functions.

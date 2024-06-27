@@ -51,7 +51,9 @@ class c_var extends BaseConstruct
              */
             list($id, $init) = $var;
             c_source::$that->addVariable($id);
-            if (get_class($init)) {
+            // Is this value a complex value?
+            if ($init && get_class($init)) {
+                // Yes, emit it.
                 $obj = new c_assign(new c_identifier($id), $init);
                 $o .= $obj->emit(true);
                 $o .= ";\n";
