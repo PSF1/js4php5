@@ -862,20 +862,96 @@ class Runtime
 
     static function expr_lte($a, $b)
     {
-        $v = Runtime::cmp($b, $a);
-        if ($v == Runtime::$true or $v == Runtime::$undefined) {
-            return Runtime::$false;
+      if ($a->type != $b->type) {
+        if ($a->type == Base::UNDEFINED and $b->type == Base::NULL) {
+          return Runtime::$true;
         }
-        return $v;
+        if ($b->type == Base::UNDEFINED and $a->type == Base::NULL) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NUMBER and $b->type == Base::STRING) {
+          return Runtime::expr_lte($a, $b->toNumber());
+        }
+        if ($b->type == Base::NUMBER and $a->type == Base::STRING) {
+          return Runtime::expr_lte($a->toNumber(), $b);
+        }
+        if ($a->type == Base::BOOLEAN) {
+          return Runtime::expr_lte($a->toNumber(), $b);
+        }
+        if ($b->type == Base::BOOLEAN) {
+          return Runtime::expr_lte($a, $b->toNumber());
+        }
+        if (($a->type == Base::NUMBER or $a->type == Base::STRING) and $b->type == Base::OBJECT) {
+          return Runtime::expr_lte($a, $b->toPrimitive());
+        }
+        if (($b->type == Base::NUMBER or $b->type == Base::STRING) and $a->type == Base::OBJECT) {
+          return Runtime::expr_lte($a->toPrimitive(), $b);
+        }
+        return Runtime::$false;
+      } else {
+        if ($a->type == Base::UNDEFINED) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NULL) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NUMBER) {
+          if (is_nan($a->value) or is_nan($b->value)) {
+            return Runtime::$false;
+          }
+        }
+        if ($a->type == Base::OBJECT) {
+          return ($a <= $b) ? Runtime::$true : Runtime::$false;
+        }
+        return ($a->value <= $b->value) ? Runtime::$true : Runtime::$false;
+      }
     }
 
     static function expr_gte($a, $b)
     {
-        $v = Runtime::cmp($a, $b);
-        if ($v == Runtime::$true or $v == Runtime::$undefined) {
-            return Runtime::$false;
+      if ($a->type != $b->type) {
+        if ($a->type == Base::UNDEFINED and $b->type == Base::NULL) {
+          return Runtime::$true;
         }
-        return $v;
+        if ($b->type == Base::UNDEFINED and $a->type == Base::NULL) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NUMBER and $b->type == Base::STRING) {
+          return Runtime::expr_gte($a, $b->toNumber());
+        }
+        if ($b->type == Base::NUMBER and $a->type == Base::STRING) {
+          return Runtime::expr_gte($a->toNumber(), $b);
+        }
+        if ($a->type == Base::BOOLEAN) {
+          return Runtime::expr_gte($a->toNumber(), $b);
+        }
+        if ($b->type == Base::BOOLEAN) {
+          return Runtime::expr_gte($a, $b->toNumber());
+        }
+        if (($a->type == Base::NUMBER or $a->type == Base::STRING) and $b->type == Base::OBJECT) {
+          return Runtime::expr_gte($a, $b->toPrimitive());
+        }
+        if (($b->type == Base::NUMBER or $b->type == Base::STRING) and $a->type == Base::OBJECT) {
+          return Runtime::expr_gte($a->toPrimitive(), $b);
+        }
+        return Runtime::$false;
+      } else {
+        if ($a->type == Base::UNDEFINED) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NULL) {
+          return Runtime::$true;
+        }
+        if ($a->type == Base::NUMBER) {
+          if (is_nan($a->value) or is_nan($b->value)) {
+            return Runtime::$false;
+          }
+        }
+        if ($a->type == Base::OBJECT) {
+          return ($a >= $b) ? Runtime::$true : Runtime::$false;
+        }
+        return ($a->value >= $b->value) ? Runtime::$true : Runtime::$false;
+      }
     }
 
     static function expr_instanceof($a, $b)
