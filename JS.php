@@ -392,33 +392,36 @@ PHP;
      */
     public static function convertReturnValue($o)
     {
-        // Test for null first to safely handle there being no return value.
-        if (($o === null) or ($o->type == Base::UNDEFINED) or ($o->type == Base::NULL)) {
-            return null;
+      // Test for null first to safely handle there being no return value.
+      if (($o === null) or ($o->type == Base::UNDEFINED) or ($o->type == Base::NULL)) {
+        return null;
 
-        } elseif (($o->type == Base::STRING) or ($o->type == Base::NUMBER)) {
-            return $o->value;
+      } elseif ($o->type == Base::STRING) {
+        // Always return PHP string
+        return (string) $o->value;
 
-        } elseif ($o->type == Base::BOOLEAN) {
-            return (bool)$o->value;
+      } elseif ($o->type == Base::NUMBER) {
+        // JS 'number' should be represented as PHP float
+        return (float) $o->value;
 
-        } elseif ($o->type == Base::OBJECT) {
-            // Can't see any reasonably feasible way to convert Javascript object functions
-            $arr = [];
-            /**
-             * @var string       $key
-             * @var jsAttribute $value
-             */
-            foreach ($o->slots as $key => $value) {
-                $arr[$key] = JS::convertReturnValue($value->value);
-            }
-            return $arr;
-//            var_dump($arr);
-//            var_dump($o->slots);
-//            exit;
-//        } elseif ($o->type == Base::REF) {
-        } else {
-//            throw new jsException(new jsSyntaxError("Unknown script return type: " . $val->type));
+      } elseif ($o->type == Base::BOOLEAN) {
+        return (bool)$o->value;
+
+      } elseif ($o->type == Base::OBJECT) {
+        // Can't see any reasonably feasible way to convert Javascript object functions
+        $arr = [];
+        /**
+         * @var string       $key
+         * @var jsAttribute  $value
+         */
+        foreach ($o->slots as $key => $value) {
+          $arr[$key] = JS::convertReturnValue($value->value);
         }
+        return $arr;
+
+      } else {
+        // Unknown type: return null for now (preserves previous behavior of "falling through")
+        return null;
+      }
     }
 }

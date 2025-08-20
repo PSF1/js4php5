@@ -2,396 +2,437 @@
 
 namespace js4php5\runtime;
 
-
 class jsArray extends jsObject
 {
+  protected $length;
 
-    protected $length;
+  function __construct($len = 0, $args = array())
+  {
+    parent::__construct("Array", Runtime::$proto_array);
 
-    function __construct($len = 0, $args = array())
-    {
-        parent::__construct("Array", Runtime::$proto_array);
-        if ($len == 0) {
-            $len = Runtime::$zero;
-        }
-        $this->length = $len;
-        foreach ($args as $index => $value) {
-            echo "Setting $index to $value<br>";
-            $this->put($index, $value);
-        }
+    // Always store length as a JS number (Base::NUMBER)
+    if ($len instanceof Base) {
+      $this->length = $len;
+    } else {
+      $this->length = Runtime::js_int((float)$len);
     }
 
-    function put($name, $value, $opts = null)
-    {
-        $name = strval($name);
-        //echo "Setting $name to ".serialize($value)."<br>";
-        if ($name == "length") {
-            //$value = $value->getValue();
-            if ($value->value < $this->length->value) {
-                #-- truncate.
-                foreach ($this->slots as $index => $value) {
-                    if (is_numeric($index) and $index >= $value->value) {
-                        $this->delete($index);
-                    }
-                }
-            }
-            $this->length = $value;
+    // Initialize elements if provided
+    foreach ($args as $index => $value) {
+      // Avoid noisy output (was echo during development)
+      $this->put($index, $value);
+    }
+  }
+
+  function put($name, $value, $opts = null)
+  {
+    $name = (string)$name;
+
+    if ($name === "length") {
+      // When setting length, if new length < old length, truncate
+      // Normalize to UInt32 as in JS
+      $newLen = $value instanceof Base ? (int)$value->toUInt32()->value : (int)$value;
+      $oldLen = (int)$this->length->toUInt32()->value;
+
+      if ($newLen < $oldLen && is_array($this->slots)) {
+        foreach (array_keys($this->slots) as $index) {
+          if (is_numeric($index) && (int)$index >= $newLen) {
+            $this->delete($index);
+          }
+        }
+      }
+
+      $this->length = Runtime::js_int((float)$newLen);
+      return;
+    }
+
+    // Regular element/property assignment
+    if (is_numeric($name)) {
+      $idx = (int)$name;
+      $curLen = (int)$this->length->toUInt32()->value;
+      if ($idx >= $curLen) {
+        $this->length = Runtime::js_int((float)($idx + 1));
+      }
+    }
+
+    return parent::put($name, $value, $opts);
+  }
+
+  static public function object($value)
+  {
+    // new Array(len)
+    if (func_num_args() == 1 && $value->type == Base::NUMBER && $value->toUInt32()->value == $value->value) {
+      $obj = new jsArray();
+      $obj->put("length", $value);
+      return $obj;
+    }
+    // new Array(...items)
+    $contrived = func_get_args();
+    return call_user_func_array([Runtime::class, "literal_array"], $contrived);
+  }
+
+  static public function toLocaleString()
+  {
+    // TODO: Implement proper locale-specific formatting
+    return jsArray::toString();
+  }
+
+  static public function toString()
+  {
+    $obj = Runtime::this();
+    if (!($obj instanceof jsArray)) {
+      throw new jsException(new jsTypeError());
+    }
+    return $obj->defaultValue();
+  }
+
+  static public function concat()
+  {
+    $array = new jsArray();
+    $args = func_get_args();
+    // Start with "this" array
+    array_unshift($args, Runtime::this());
+
+    while (count($args) > 0) {
+      $obj = array_shift($args);
+      if (!($obj instanceof jsArray)) {
+        $array->_push($obj);
+      } else {
+        $len = (int)$obj->get("length")->toUInt32()->value;
+        for ($k = 0; $k < $len; $k++) {
+          if ($obj->hasProperty($k)) {
+            $array->_push($obj->get($k));
+          }
+        }
+      }
+    }
+    return $array;
+  }
+
+  ////////////////////////
+  // scriptable methods //
+  ////////////////////////
+
+  function _push($val)
+  {
+    // Use current numeric length for next index
+    $v = (int)$this->length->toUInt32()->value;
+    $this->put($v, $val);
+    $this->length = Runtime::js_int((float)($v + 1));
+  }
+
+  static public function join($sep)
+  {
+    $obj = Runtime::this();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+
+    $separator = ($sep == Runtime::$undefined) ? "," : $sep->toStr()->value;
+
+    if ($len === 0) {
+      return Runtime::js_str("");
+    }
+
+    $arr = jsArray::toNativeArray($obj);
+    $arr2 = array();
+    foreach ($arr as $elem) {
+      // Convert each element to string
+      $arr2[] = $elem->toStr()->value;
+    }
+    return Runtime::js_str(implode($separator, $arr2));
+  }
+
+  static function toNativeArray($obj)
+  {
+    $len = (int)$obj->get("length")->toUInt32()->value;
+    $arr = array();
+    for ($i = 0; $i < $len; $i++) {
+      $arr[$i] = $obj->get($i);
+    }
+    return $arr;
+  }
+
+  static public function pop()
+  {
+    $obj = Runtime::this();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+
+    if ($len === 0) {
+      $obj->put("length", Runtime::js_int(0));
+      return Runtime::$undefined;
+    }
+
+    $index = $len - 1;
+    $elem = $obj->get($index);
+    $obj->delete($index);
+    $obj->put("length", Runtime::js_int((float)$index));
+    return $elem;
+  }
+
+  static public function push()
+  {
+    $obj = Runtime::this();
+    $n = (int)$obj->get("length")->toUInt32()->value;
+    $args = func_get_args();
+
+    while (count($args) > 0) {
+      $arg = array_shift($args);
+      $obj->put($n, $arg);
+      $n++;
+    }
+
+    $obj->put("length", Runtime::js_int((float)$n));
+    return Runtime::js_int((float)$n);
+  }
+
+  static public function reverse()
+  {
+    $obj = Runtime::this();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+    $mid = (int)floor($len / 2);
+    $k = 0;
+    while ($k != $mid) {
+      $l = $len - $k - 1;
+      if (!$obj->hasProperty($k)) {
+        if (!$obj->hasProperty($l)) {
+          $obj->delete($k);
+          $obj->delete($l);
         } else {
-            if (is_numeric($name)) {
-                if ($name >= $this->length) {
-                    $this->length = Runtime::js_int($name + 1);
-                }
-            }
-            return parent::put($name, $value, $opts);
+          $obj->put($k, $obj->get($l));
+          $obj->delete($l);
         }
-    }
-
-    static public function object($value)
-    {
-        if (func_num_args() == 1 and $value->type == Base::NUMBER and $value->toUInt32()->value == $value->value) {
-            $obj = new jsArray();
-            $obj->put("length", $value);
-            return $obj;
-        }
-        $contrived = func_get_args();
-        return call_user_func_array(array("Runtime", "literal_array"), $contrived);
-    }
-
-    static public function toLocaleString()
-    {
-        // XXX write a localized version
-        return jsArray::toString();
-    }
-
-    static public function toString()
-    {
-        $obj = Runtime::this();
-        if (!($obj instanceof jsArray)) {
-            throw new jsException(new jsTypeError());
-        }
-        return $obj->defaultValue();
-    }
-
-    static public function concat()
-    {
-        $array = new jsArray();
-        $args = func_get_args();
-        array_unshift($args, Runtime::$this());
-        while (count($args) > 0) {
-            $obj = array_shift($args);
-            if (!($obj instanceof jsArray)) {
-                $array->_push($obj);
-            } else {
-                $len = $obj->get("length")->value;
-                for ($k = 0; $k < $len; $k++) {
-                    if ($obj->hasProperty($k)) {
-                        $array->_push($obj->get($k));
-                    }
-                }
-            }
-        }
-        return $array;
-    }
-    ////////////////////////
-    // scriptable methods //
-    ////////////////////////
-
-    function _push($val)
-    {
-        $v = $this->length->value;
-        $this->put($v, $val);
-        $this->length = Runtime::js_int($v + 1);
-    }
-
-    static public function join($sep)
-    {
-        $obj = Runtime::this();
-        $len = $obj->get("length")->toUInt32()->value;
-        if ($sep == Runtime::$undefined) {
-            $sep = ",";
+      } else {
+        if (!$obj->hasProperty($l)) {
+          $obj->put($l, $obj->get($k));
+          $obj->delete($k);
         } else {
-            $sep = $sep->toStr()->value;
+          $a = $obj->get($k);
+          $obj->put($k, $obj->get($l));
+          $obj->put($l, $a);
         }
-        if ($len == 0) {
-            return Runtime::js_str("");
-        }
-        $arr = jsArray::toNativeArray($obj);
-        $arr2 = array();
-        foreach ($arr as $elem) {
-            array_push($arr->toStr());
-        }
-        return Runtime::js_str(implode($sep, $arr2));
+      }
+      $k++;
+    }
+    return $obj;
+  }
+
+  static public function shift()
+  {
+    $obj = Runtime::this();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+
+    if ($len === 0) {
+      $obj->put("length", Runtime::js_int(0));
+      return Runtime::$undefined;
     }
 
-    static function toNativeArray($obj)
-    {
-        $len = $obj->get("length")->value;
-        $arr = array();
-        for ($i = 0; $i < $len; $i++) {
-            $arr[$i] = $obj->get($i);
-        }
-        return $arr;
+    $first = $obj->get(0);
+    $k = 1;
+    while ($k != $len) {
+      if ($obj->hasProperty($k)) {
+        $obj->put($k - 1, $obj->get($k));
+      } else {
+        $obj->delete($k - 1);
+      }
+      $k++;
+    }
+    $obj->delete($len - 1);
+    $obj->put("length", Runtime::js_int((float)($len - 1)));
+    return $first;
+  }
+
+  static public function slice($start, $end)
+  {
+    $obj = Runtime::this();
+    $array = new jsArray();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+
+    $startVal = (int)$start->toInteger()->value;
+    $k = ($startVal < 0) ? max($len + $startVal, 0) : min($len, $startVal);
+
+    if ($end == Runtime::$undefined) {
+      $endVal = $len;
+    } else {
+      $endVal = (int)$end->toInteger()->value;
     }
 
-    static public function pop()
-    {
-        $obj = Runtime::this();
-        $len = $obj->get("length")->toUInt32();
-        if ($len->value == 0) {
-            $obj->put("lengh", $len);
-            return Runtime::$undefined;
-        }
-        $index = $len->value - 1;
-        $elem = $obj->get($index);
-        $obj->delete($index);
-        $obj->put("length", Runtime::js_int($index));
-        return $elem;
+    $endVal = ($endVal < 0) ? max($len + $endVal, 0) : min($len, $endVal);
+
+    $n = 0;
+    while ($k < $endVal) {
+      if ($obj->hasProperty($k)) {
+        $array->put($n, $obj->get($k));
+      }
+      $k++;
+      $n++;
+    }
+    $array->put("length", Runtime::js_int((float)$n));
+    return $array;
+  }
+
+  static public function sort($comparefn)
+  {
+    $obj = Runtime::this();
+    $arr = jsArray::toNativeArray($obj);
+
+    Runtime::$sortfn = $comparefn;
+    // Use the helper in this class
+    usort($arr, [self::class, "sort_helper"]);
+    Runtime::$sortfn = null;
+
+    $len = count($arr);
+    for ($i = 0; $i < $len; $i++) {
+      $obj->put($i, $arr[$i]);
+    }
+    $obj->put('length', Runtime::js_int((float)$len));
+    return $obj;
+  }
+
+  static public function sort_helper($a, $b)
+  {
+    if ($a == Runtime::$undefined) {
+      return ($b == Runtime::$undefined) ? 0 : 1;
+    }
+    if ($b == Runtime::$undefined) {
+      return -1;
     }
 
-    static public function push()
-    {
-        $obj = Runtime::this();
-        $n = $obj->get("length")->toUInt32()->value;
-        $args = func_get_Args();
-        while (count($args) > 0) {
-            $arg = array_shift($args);
-            $obj->put($n, $arg);
-            $n++;
-        }
-        $obj->put("length", Runtime::js_int($n));
-        return $n;
+    if (Runtime::$sortfn == null || Runtime::$sortfn == Runtime::$undefined) {
+      // Default: string comparison semantics
+      $as = $a->toStr();
+      $bs = $b->toStr();
+      if (Runtime::js_bool(Runtime::expr_lt($as, $bs))) {
+        return -1;
+      }
+      if (Runtime::js_bool(Runtime::expr_gt($as, $bs))) {
+        return 1;
+      }
+      return 0;
     }
 
-    static public function reverse()
-    {
-        $obj = Runtime::this();
-        $len = $obj->get("length")->toUInt32()->value;
-        $mid = floor($len / 2);
-        $k = 0;
-        while ($k != $mid) {
-            $l = $len - $k - 1;
-            if (!$obj->hasProperty($k)) {
-                if (!$obj->hasProperty($l)) {
-                    $obj->delete($k);
-                    $obj->delete($l);
-                } else {
-                    $obj->put($k, $obj->get($l));
-                    $obj->delete($l);
-                }
-            } else {
-                if (!$obj->hasProperty($l)) {
-                    $obj->put($l, $obj->get($k));
-                    $obj->delete($k);
-                } else {
-                    $a = $obj->get($k);
-                    $obj->put($k, $obj->get($l));
-                    $obj->put($l, $a);
-                }
-            }
-            $k++;
-        }
-        return $obj;
+    // Custom comparator: call with (a, b)
+    $cmp = Runtime::$sortfn->_call(Runtime::$global, [$a, $b])->toInteger()->value;
+    // Ensure PHP int return (-1, 0, 1 typically)
+    return (int)$cmp;
+  }
+
+  static public function splice($start, $deleteCount)
+  {
+    $obj = Runtime::this();
+    $args = func_get_args();
+    array_shift($args); // remove $start
+    array_shift($args); // remove $deleteCount
+
+    $array = new jsArray();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+
+    $startVal = (int)$start->toInteger()->value;
+    $startIdx = ($startVal < 0) ? max($len + $startVal, 0) : min($len, $startVal);
+
+    $del = (int)min(max((int)$deleteCount->toInteger()->value, 0), $len - $startIdx);
+
+    // Collect removed items
+    for ($k = 0; $k < $del; $k++) {
+      if ($obj->hasProperty($startIdx + $k)) {
+        $array->put($k, $obj->get($startIdx + $k));
+      }
     }
+    $array->put("length", Runtime::js_int((float)$del));
 
-    static public function shift()
-    {
-        $obj = Runtime::this();
-        $len = $obj->get("length")->toUInt32()->value;
-        if ($len == 0) {
-            $obj->put("length", 0);
-            return Runtime::$undefined;
-        }
-        $first = $obj->get(0);
-        $k = 1;
-        while ($k != $len) {
-            if ($obj->hasProperty($k)) {
-                $obj->put($k - 1, $obj->get($k));
-            } else {
-                $obj->delete($k - 1);
-            }
-            $k++;
-        }
-        $obj->delete($len - 1);
-        $obj->put("length", $len - 1);
-        return $first;
-    }
+    $nbitems = count($args);
 
-    static public function slice($start, $end)
-    {
-        $obj = Runtime::this();
-        $array = new jsArray();
-        $len = $obj->get("length")->toUInt32()->value;
-        $start = $start->toInteger()->value;
-        $k = ($start < 0) ? max($len + $start, 0) : min($len, $start);
-        if ($end == Runtime::$undefined) {
-            $end = $len;
-        } else {
-            $end = $end->toInteger()->value;
+    // Shift elements to make room or close gaps
+    if ($nbitems != $del) {
+      if ($nbitems <= $del) {
+        $k = $startIdx;
+        while ($k != $len - $del) {
+          $r22 = $k + $del;
+          $r23 = $k + $nbitems;
+          if ($obj->hasProperty($r22)) {
+            $obj->put($r23, $obj->get($r22));
+          } else {
+            $obj->delete($r23);
+          }
+          $k++;
         }
-        $end = ($end < 0) ? max($len + $end, 0) : min($len, $end);
-        $n = 0;
-        while ($k < $end) {
-            if ($obj->hasProperty($k)) {
-                $array->put($n, $obj->get($k));
-            }
-            $k++;
-            $n++;
-        }
-        $array->put("length", $n);
-        return $array;
-    }
-
-    static public function sort($comparefn)
-    {
-        $obj = Runtime::this();
-        $arr = jsArray::toNativeArray($obj);
-
-        Runtime::$sortfn = $comparefn;
-        usort($arr, array("js_array", "sort_helper"));
-        Runtime::$sortfn = null;
-        $len = count($arr);
-        for ($i = 0; $i < $len; $i++) {
-            $obj->put($i, $arr[$i]);
-        }
-        $obj->put('length', Runtime::js_int($len));
-        return $obj;
-    }
-
-    static public function sort_helper($a, $b)
-    {
-        if ($a == Runtime::$undefined) {
-            if ($b == Runtime::$undefined) {
-                return 0;
-            } else {
-                return 1;
-            }
-        } else {
-            if ($b == Runtime::$undefined) {
-                return -1;
-            }
-        }
-        if (Runtime::$sortfn == null or Runtime::$sortfn == Runtime::$undefined) {
-            $a = $a->toStr();
-            $b = $b->toStr();
-            if (js_bool(Runtime::expr_lt($a, $b))) {
-                return -1;
-            }
-            if (js_bool(Runtime::expr_gt($a, $b))) {
-                return 1;
-            }
-            return 0;
-        } else {
-            return Runtime::$sortfn->_call($a, $b)->toInteger()->value;
-        }
-    }
-
-    static public function splice($start, $deleteCount)
-    {
-        $obj = Runtime::this();
-        $args = func_get_args();
-        array_shift($args);
-        array_shift($args);
-        $array = new jsArray();
-        $len = $obj->get("length")->toUInt32()->value;
-        $start = $start->toInteger();
-        $start = ($start < 0) ? max($len + $start, 0) : min($len, $start);
-        $count = min(max($deleteCount->toInteger(), 0), $len - $start);
-        $k = 0;
-        while ($k != $count) {
-            if ($obj->hasProperty($start + $k)) {
-                $array->put($k, $obj->get($start + $k));
-            }
-            $k++;
-        }
-        $array->put("length", Runtime::js_int($count));
-        $nbitems = count($args);
-        if ($nbitems != $count) {
-            if ($nbitems <= $count) {
-                $k = $start;
-                while ($k != $len - $count) {
-                    $r22 = $k + $count;
-                    $r23 = $k + $nbitems;
-                    if ($obj->hasProperty($r22)) {
-                        $obj->put($r23, $obj->get($r22));
-                    } else {
-                        $obj->delete($r23);
-                    }
-                    $k++;
-                }
-                $k = $len;
-                while ($k != $len - $count + $nbitems) {
-                    $obj->delete($k - 1);
-                    $k--;
-                }
-            } else {
-                $k = $len - $count;
-                while ($k != $start) {
-                    $r39 = $k + $count - 1;
-                    $r40 = $k + $nbitems - 1;
-                    if ($obj->hasProperty($r39)) {
-                        $obj->put($r40, $obj->get($r39));
-                    } else {
-                        $obj->delete($r40);
-                    }
-                    $k--;
-                }
-            }
-        }
-        $k = $start;
-        while (count($args) > 0) {
-            $obj->put($k++, array_shift($args));
-        }
-        $obj->put("length", Runtime::js_int($len - $count + $nbitems));
-        return $array;
-    }
-
-    static public function unshift()
-    {
-        $obj = Runtime::this();
-        $len = $obj->get("length")->toUInt32()->value;
-        $args = func_get_args();
-        $nbitems = count($args);
         $k = $len;
-        while ($k != 0) {
-            if ($obj->hasProperty($k - 1)) {
-                $obj->put($k + $nbitems - 1, $obj->get($k - 1));
-            } else {
-                $obj->delete($k + $nbitems - 1);
-            }
-            $k--;
+        while ($k != $len - $del + $nbitems) {
+          $obj->delete($k - 1);
+          $k--;
         }
-        while (count($args) > 0) {
-            $obj->put($k, array_shift($args));
-            $k++;
+      } else {
+        $k = $len - $del;
+        while ($k != $startIdx) {
+          $r39 = $k + $del - 1;
+          $r40 = $k + $nbitems - 1;
+          if ($obj->hasProperty($r39)) {
+            $obj->put($r40, $obj->get($r39));
+          } else {
+            $obj->delete($r40);
+          }
+          $k--;
         }
-        $obj->put("length", $len + $nbitems);
-        return Runtime::js_int($len + $nbitems);
+      }
     }
 
-    function defaultValue($iggy = null)
-    {
-        $arr = array();
-        for ($i = 0; $i < $this->length->value; $i++) {
-            $arr[$i] = '';
-        }
-        foreach ($this->slots as $index => $value) {
-            if (is_numeric($index)) {
-                $arr[$index] = $value->value->toStr()->value;
-            }
-        }
-        $o = implode(",", $arr);
-        return Runtime::js_str($o);
+    // Insert new items
+    $k = $startIdx;
+    while (count($args) > 0) {
+      $obj->put($k++, array_shift($args));
     }
 
-    function get($name)
-    {
-        $name = strval($name);
-        if ($name == "length") {
-            return $this->length;
-        } else {
-            return parent::get($name);
-        }
+    $obj->put("length", Runtime::js_int((float)($len - $del + $nbitems)));
+    return $array;
+  }
+
+  static public function unshift()
+  {
+    $obj = Runtime::this();
+    $len = (int)$obj->get("length")->toUInt32()->value;
+    $args = func_get_args();
+    $nbitems = count($args);
+
+    $k = $len;
+    while ($k != 0) {
+      if ($obj->hasProperty($k - 1)) {
+        $obj->put($k + $nbitems - 1, $obj->get($k - 1));
+      } else {
+        $obj->delete($k + $nbitems - 1);
+      }
+      $k--;
     }
+    $k = 0;
+    while (count($args) > 0) {
+      $obj->put($k, array_shift($args));
+      $k++;
+    }
+    $obj->put("length", Runtime::js_int((float)($len + $nbitems)));
+    return Runtime::js_int((float)($len + $nbitems));
+  }
+
+  function defaultValue($iggy = null)
+  {
+    $arr = array();
+    $lengthVal = (int)$this->length->toUInt32()->value;
+    for ($i = 0; $i < $lengthVal; $i++) {
+      $arr[$i] = '';
+    }
+    if (is_array($this->slots)) {
+      foreach ($this->slots as $index => $value) {
+        if (is_numeric($index)) {
+          $arr[(int)$index] = $value->value->toStr()->value;
+        }
+      }
+    }
+    $o = implode(",", $arr);
+    return Runtime::js_str($o);
+  }
+
+  function get($name)
+  {
+    $name = (string)$name;
+    if ($name === "length") {
+      return $this->length;
+    }
+    return parent::get($name);
+  }
 }
-
-?>

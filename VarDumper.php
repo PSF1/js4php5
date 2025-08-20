@@ -41,9 +41,31 @@ class VarDumper
         self::$_depth = $depth;
         self::dumpInternal($var, 0);
         if ($highlight) {
-            $result = highlight_string("<?php\n" . self::$_output, true);
-//            self::$_output = preg_replace('/&lt;\\?php<br \\/>/', '', $result, 1);
-            self::$_output = preg_replace('/&lt;\\?php<br \\/>/', ($label ? $label . ' = ' : ''), $result, 1);
+          $result = highlight_string("<?php\n" . self::$_output, true);
+
+          // Build a safe label prefix (HTML-escaped) if provided
+          $labelPrefix = $label ? htmlspecialchars($label, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ' = ' : '';
+
+          // Remove the artificially injected "<?php" header regardless of how highlight_string renders the line break:
+          // - It may use a <br> tag
+          // - It may render a literal "\n"
+          // We replace the first span that contains "&lt;?php" and the following break with the label (if any).
+          self::$_output = preg_replace(
+            '/<span[^>]*>&lt;\?php.*?<\/span>(?:<br\s*\/?>|\\n|\r\n|\n|\r)?/is',
+            $labelPrefix,
+            $result,
+            1
+          );
+
+          // In the unlikely event preg_replace fails, fall back to prefixing the label
+          if (self::$_output === null) {
+            self::$_output = $labelPrefix . $result;
+          }
+        } else {
+          // Plain text mode: prefix label if present (UX improvement)
+          if ($label) {
+            self::$_output = $label . ' = ' . self::$_output;
+          }
         }
 
         return self::$_output;
@@ -113,6 +135,13 @@ class VarDumper
                     self::$_output .= "\n" . $spaces . ')';
                 }
                 break;
+          case 'resource':
+            self::$_output .= '{resource}';
+            break;
+          case 'resource (closed)':
+            // PHP 7.2+ can return this type for closed resources
+            self::$_output .= '{resource (closed)}';
+            break;
         }
     }
 

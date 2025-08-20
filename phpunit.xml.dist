@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- PHPUnit 9.6 configuration -->
+<phpunit
+  bootstrap="../../autoload.php"
+  colors="true"
+  verbose="true"
+  stopOnFailure="false"
+  beStrictAboutOutputDuringTests="true"
+>
+  <testsuites>
+    <testsuite name="Project Test Suite">
+      <!-- All tests live under the 'tests' directory -->
+      <directory>tests</directory>
+    </testsuite>
+  </testsuites>
+
+  <!-- Code coverage setup (optional). You can include vendor code if you want to measure it. -->
+  <coverage processUncoveredFiles="true">
+    <include>
+      <!-- Adjust this to your project's source directory if any -->
+<!--      <directory suffix=".php">src</directory>-->
+
+      <!-- Include the specific vendor package you want to test -->
+      <directory suffix=".php">vendor/hiltonjanfield/js4php5</directory>
+    </include>
+  </coverage>
+
+  <php>
+    <!-- Enable all error levels, including deprecations -->
+    <ini name="error_reporting" value="-1"/>
+  </php>
+</phpunit>

@@ -188,6 +188,10 @@ Things we've done prior to the initial github upload:
 - Stole and slightly modified Yii2's VarDumper class to assist in development. Sorry @qiangxue! We'll remove it sooner or later.
 - Added a simple Timer class to assist in development. To be removed later.
 
+## Tests
+
+Added `phpunit.xml.dist` file to execute tests with this project installed inside the vendor/ folder.
+
 ## Todo
 
 Things left to do:

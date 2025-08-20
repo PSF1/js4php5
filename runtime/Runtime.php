@@ -221,6 +221,8 @@ class Runtime
         Runtime::define_function(array("jsDate", "getSeconds"), 'getSeconds');
         Runtime::define_function(array("jsDate", "getUTCSeconds"), 'getUTCSeconds');
         Runtime::define_function(array("jsDate", "getMilliseconds"), 'getMilliseconds');
+        // Alias to keep backward-compat with historical typo.
+        Runtime::define_function(array("jsDate", "getMillieconds"), 'getMillieconds');
         Runtime::define_function(array("jsDate", "getUTCMilliseconds"), 'getUTCMilliseconds');
         Runtime::define_function(array("jsDate", "getTimezoneOffset"), 'getTimezoneOffset');
         Runtime::define_function(array("jsDate", "setTime"), 'setTime', array("time"));
@@ -440,35 +442,43 @@ class Runtime
 
     static function trycatch($expr, $catch, $finally, $id = 0)
     {
-        if (js_thrown(Runtime::$exception)) {
-            #-- assert($expr == NULL);
-            if ($expr != null) {
-                echo "TRYCATCH ERROR: INCONSISTENT STATE.<hr><br>";
-            }
-            /* evaluate catch */
-            if ($catch != null) {
-                $obj = new jsObject();
-                $obj->put($id, Runtime::$exception->value, array("dontdelete"));
-                Runtime::$exception = null;
-                Runtime::push_scope($obj);
-                $ret = $catch();
-                Runtime::pop_scope();
-                if ($ret != null) {
-                    $expr = $ret;
-                }
-            }
+      // Check if a JS exception is pending using the static helper
+      if (self::js_thrown(Runtime::$exception)) {
+        // If $expr is not null here, state is inconsistent (legacy debug)
+        if ($expr != null) {
+          // Keep legacy notice but avoid breaking; you may remove these echoes if undesired
+          echo "TRYCATCH ERROR: INCONSISTENT STATE.<hr><br>";
         }
-        if ($finally != null) {
-            #-- XXX tentative workaround for the call_user_func + exception crash in 5.0.3
-            $ret = $finally();
-            if ($ret != null) {
-                $expr = $ret;
-            }
+        /* evaluate catch */
+        if ($catch != null) {
+          // Create a new scope with the catch identifier bound to the exception value
+          $obj = new jsObject();
+          $obj->put($id, Runtime::$exception->value, array("dontdelete"));
+          // Clear the pending exception before executing catch
+          Runtime::$exception = null;
+          Runtime::push_scope($obj);
+          $ret = $catch();
+          Runtime::pop_scope();
+          if ($ret != null) {
+            $expr = $ret;
+          }
         }
-        if (js_thrown(Runtime::$exception)) {
-            throw Runtime::$exception; #-- pass it down.
+      }
+
+      if ($finally != null) {
+        // Execute finally; if it returns a non-null Base, it overrides the result
+        $ret = $finally();
+        if ($ret != null) {
+          $expr = $ret;
         }
-        return $expr;
+      }
+
+      // If an exception is still pending after catch/finally, rethrow it
+      if (self::js_thrown(Runtime::$exception)) {
+        throw Runtime::$exception; // pass it down
+      }
+
+      return $expr;
     }
 
     static function push_scope($obj)
@@ -1097,13 +1107,16 @@ class Runtime
 
     static public function js_int($i)
     {
-        static $cache = array();
-        $s = strval($i);
-        if (!isset($cache[$s])) {
-            $cache[$s] = new Base(Base::NUMBER, $i);
-        }
-        //echo "js_int($i) = ".serialize($cache[$s])."<br>";
-        return $cache[$s];
+      static $cache = array();
+      // Normalize to float to match JS 'number' semantics
+      $f = (float) $i;
+      $s = (string) $f; // use float string as cache key to keep consistency
+      if (!isset($cache[$s])) {
+        // Always store as float
+        $cache[$s] = new Base(Base::NUMBER, $f);
+      }
+      //echo "js_int($i) = ".serialize($cache[$s])."<br>";
+      return $cache[$s];
     }
 
     static public function js_bool($v)
@@ -1118,7 +1131,7 @@ class Runtime
 
     static public function js_thrown($v)
     {
-        return (get_class($v) == "jsException" and $v->type == jsException::EXCEPTION);
+      return ($v instanceof jsException) && ($v->type == jsException::EXCEPTION);
     }
 
     /**
