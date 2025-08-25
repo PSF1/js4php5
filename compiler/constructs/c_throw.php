@@ -4,16 +4,20 @@ namespace js4php5\compiler\constructs;
 
 class c_throw extends BaseConstruct
 {
-    /* JS exceptions are sufficiently different from php5 exceptions to make them un-leverage-able. */
-    function __construct($expr)
-    {
-        $this->expr = $expr;
-    }
+  /** @var BaseConstruct */
+  public $expr;
 
-    function emit($unusedParameter = false)
-    {
-        //return "return new js_completion(".$this->expr->emit().");\n";
-        return "throw new jsException(" . $this->expr->emit(true) . ");\n";
-    }
+  /**
+   * @param BaseConstruct $expr
+   */
+  function __construct($expr)
+  {
+    $this->expr = $expr;
+  }
+
+  function emit($unusedParameter = false)
+  {
+    // Emit a fully-qualified runtime exception to work from the compiled script namespace.
+    return "throw new \\js4php5\\runtime\\jsException(" . $this->expr->emit(true) . ");\n";
+  }
 }
-

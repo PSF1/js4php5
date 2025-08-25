@@ -42,7 +42,7 @@ class c_try extends BaseConstruct
         $o = "function " . $this->id_try . "() {\n";
         $o .= "  try ";
         $o .= trim(str_replace("\n", "\n  ", $this->body));
-        $o .= " catch (Exception \$e) {\n";
+        $o .= " catch (\Exception \$e) {\n";
         $o .= "    Runtime::\$exception = \$e;\n";
         $o .= "  }\n";
         $o .= "  return NULL;\n";
