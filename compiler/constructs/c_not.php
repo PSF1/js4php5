@@ -2,16 +2,17 @@
 
 namespace js4php5\compiler\constructs;
 
-use js4php5\VarDumper;
-
+/**
+ * Logical NOT operator -- Javascript '!' operator
+ */
 class c_not extends BaseUnaryConstruct
 {
-    /**
-     * @param BaseConstruct[] $expression
-     */
-    function __construct($expression)
-    {
-        parent::__construct([$expression], true);
-    }
+  /**
+   * @param BaseConstruct $expression
+   */
+  function __construct($expression)
+  {
+    // Unary operator: request value of the operand
+    parent::__construct([$expression], true);
+  }
 }
-

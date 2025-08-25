@@ -3,16 +3,16 @@
 namespace js4php5\compiler\constructs;
 
 /**
- * Construct to emulate JavaScript pre-plus-plus operator (++var)
+ * Construct to emulate JavaScript pre-increment operator (++var)
  */
 class c_pre_pp extends BaseUnaryConstruct
 {
-    /**
-     * @param c_identifier $identifier
-     */
-    function __construct($identifier)
-    {
-        parent::__construct([$identifier]);
-    }
+  /**
+   * @param BaseConstruct $identifier Identifier to be incremented (must be a reference)
+   */
+  function __construct($identifier)
+  {
+    // Pre-increment needs a reference to the operand, not its value.
+    parent::__construct([$identifier], false);
+  }
 }
-

@@ -2,32 +2,35 @@
 
 namespace js4php5\compiler\constructs;
 
-use js4php5\JS;
-
 class c_print extends BaseConstruct
 {
-    /** @var BaseConstruct[] */
-    public $args;
+  /** @var array<int, mixed> */
+  public $args;
 
-    function __construct()
-    {
-        $this->args = func_get_args();
+  function __construct()
+  {
+    // Capture variadic args safely
+    $this->args = func_get_args();
+  }
+
+  function emit($unusedParameter = false)
+  {
+    $parts = [];
+    foreach ($this->args as $arg) {
+      // If it's a construct, emit its value; otherwise treat as a literal token
+      if (is_object($arg) && method_exists($arg, 'emit')) {
+        $parts[] = '(' . $arg->emit(true) . ')';
+      } else {
+        $parts[] = '(' . (string)$arg . ')';
+      }
     }
 
-    function emit($unusedParameter = false)
-    {
-        $o = 'Runtime::write( ';
-        $first = true;
-        foreach ($this->args as $arg) {
-            if ($first) {
-                $first = false;
-            } else {
-                $o .= ",";
-            }
-            $o .= "(" . ($arg->className() ? $arg->emit(true) : $arg).")";
-        }
-        $o .= ");\n";
-        return $o;
+    // If no args, avoid introducing a double space between parentheses
+    if (empty($parts)) {
+      return 'Runtime::write( );' . "\n";
     }
+
+    // Normal path with arguments, keep spacing before closing parenthesis
+    return 'Runtime::write( ' . implode(',', $parts) . " );\n";
+  }
 }
-

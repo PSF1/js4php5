@@ -2,35 +2,32 @@
 
 namespace js4php5\compiler\constructs;
 
-use js4php5\VarDumper;
-
 class c_call extends BaseConstruct
 {
-    /** @var c_identifier */
-    public $expr;
+  /** @var BaseConstruct */
+  public $expr;
 
-    /** @var c_identifier[] */
-    public $args;
+  /** @var BaseConstruct[] */
+  public $args;
 
-    /**
-     * @param c_identifier $expr
-     * @param c_identifier[] $args
-     */
-    function __construct($expr, $args)
-    {
-        $this->expr = $expr;
-        $this->args = $args;
+  /**
+   * @param BaseConstruct   $expr
+   * @param BaseConstruct[]|BaseConstruct $args
+   */
+  function __construct($expr, $args)
+  {
+    $this->expr = $expr;
+    // Normalize to array of nodes: wrap single node instead of casting
+    $this->args = is_array($args) ? $args : [$args];
+  }
+
+  function emit($unusedParameter = false)
+  {
+    $args = array();
+    /** @var BaseConstruct $arg */
+    foreach ($this->args as $arg) {
+      $args[] = $arg->emit(true);
     }
-
-    function emit($unusedParameter = false)
-    {
-        $args = array();
-        /** @var c_identifier $arg */
-        foreach ($this->args as $arg) {
-            $args[] = $arg->emit(true);
-        }
-        return "Runtime::call(" . $this->expr->emit() . ", array(" . implode(",", $args) . "))";
-    }
+    return "Runtime::call(" . $this->expr->emit() . ", array(" . implode(",", $args) . "))";
+  }
 }
-
-

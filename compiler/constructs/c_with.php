@@ -4,17 +4,24 @@ namespace js4php5\compiler\constructs;
 
 class c_with extends BaseConstruct
 {
-    function __construct($expr, $statement)
-    {
-        list($this->expr, $this->statement) = func_get_args();
-    }
+  /** @var BaseConstruct */
+  public $expr;
 
-    function emit($unusedParameter = false)
-    {
-        $o = "Runtime::push_scope(js_obj(" . $this->expr->emit(true) . "));\n";
-        $o .= $this->statement->emit(true);
-        $o .= "Runtime::pop_scope();\n";
-        return $o;
-    }
+  /** @var BaseConstruct */
+  public $statement;
+
+  function __construct($expr, $statement)
+  {
+    $this->expr = $expr;
+    $this->statement = $statement;
+  }
+
+  function emit($unusedParameter = false)
+  {
+    // Push scope with the object value, emit body, then pop scope
+    $o  = "Runtime::push_scope(Runtime::js_obj(" . $this->expr->emit(true) . "));\n";
+    $o .= $this->statement->emit(true);
+    $o .= "Runtime::pop_scope();\n";
+    return $o;
+  }
 }
-

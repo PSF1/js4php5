@@ -9,14 +9,13 @@ use js4php5\VarDumper;
  */
 class c_assign extends BaseBinaryConstruct
 {
-
-    /**
-     * @param BaseConstruct[] $leftStatement
-     * @param BaseConstruct[] $rightStatement
-     */
-    function __construct($leftStatement, $rightStatement)
-    {
-        parent::__construct([$leftStatement, $rightStatement], false, true);
-    }
+  /**
+   * @param BaseConstruct $leftStatement
+   * @param BaseConstruct $rightStatement
+   */
+  function __construct($leftStatement, $rightStatement)
+  {
+    // Left: by reference (getValue=false), Right: by value (getValue=true)
+    parent::__construct([$leftStatement, $rightStatement], false, true);
+  }
 }
-

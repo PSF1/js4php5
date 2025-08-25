@@ -4,28 +4,62 @@ namespace js4php5\compiler\parser;
 
 class distinguishing_table
 {
-    function distinguishing_table()
-    {
-        $this->dist = array();
-    }
+  /** @var array<string,bool> */
+  private $dist;
 
-    function key($s1, $s2)
-    {
-        $them = array($s1, $s2);
-        sort($them);
-        return implode("|", $them);
-    }
+  /**
+   * Modern constructor; inicializa la tabla interna.
+   */
+  public function __construct()
+  {
+    $this->dist = [];
+  }
 
-    function distinguish($s1, $s2)
-    {
-        $key = $this->key($s1, $s2);
-        $this->dist[$key] = true;
-    }
+  /**
+   * Compatibilidad retro PHP4-style: invoca __construct().
+   */
+  public function distinguishing_table()
+  {
+    $this->__construct();
+  }
 
-    function differ($s1, $s2)
-    {
-        $key = $this->key($s1, $s2);
-        return isset($this->dist[$key]);
-    }
+  /**
+   * Construye la clave canónica del par, independiente del orden.
+   *
+   * @param string $s1
+   * @param string $s2
+   * @return string
+   */
+  public function key($s1, $s2)
+  {
+    $them = [$s1, $s2];
+    sort($them);
+    return implode('|', $them);
+  }
+
+  /**
+   * Marca el par (s1,s2) como distinguible.
+   *
+   * @param string $s1
+   * @param string $s2
+   * @return void
+   */
+  public function distinguish($s1, $s2)
+  {
+    $key = $this->key($s1, $s2);
+    $this->dist[$key] = true;
+  }
+
+  /**
+   * Indica si el par (s1,s2) está marcado como distinguible (orden indiferente).
+   *
+   * @param string $s1
+   * @param string $s2
+   * @return bool
+   */
+  public function differ($s1, $s2)
+  {
+    $key = $this->key($s1, $s2);
+    return isset($this->dist[$key]);
+  }
 }
-

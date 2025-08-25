@@ -2,30 +2,36 @@
 
 namespace js4php5\compiler\constructs;
 
-use js4php5\VarDumper;
-
 class c_catch extends BaseConstruct
 {
-    /** @var string */
-    public $id;
+  /** @var string */
+  public $id;
 
-    /** @var c_block */
-    public $code;
+  /** @var BaseConstruct */
+  public $code;
 
-    /**
-     * @param string $id
-     * @param c_block $code
-     */
-    function __construct($id, $code)
-    {
-        $this->id = $id;
-        $this->code = $code;
+  /**
+   * @param string       $id
+   * @param BaseConstruct $code
+   */
+  function __construct($id, $code)
+  {
+    // Normalize identifier to string
+    $this->id = (string) $id;
+
+    // Ensure $code is a construct we can emit; wrap arrays/null into a c_block
+    if ($code instanceof BaseConstruct) {
+      $this->code = $code;
+    } else {
+      // Accept array of statements or single value and wrap
+      $this->code = new c_block(is_array($code) ? $code : (array) $code);
     }
+  }
 
-    function emit($unusedParameter = false)
-    {
-        // this kind of code makes you wonder why this is even an object. absorb me. please. XXX
-        return $this->code->emit(true);
-    }
+  function emit($unusedParameter = false)
+  {
+    // This node simply delegates to the contained block/construct.
+    // Variable binding for "catch (id)" is handled by surrounding compiler logic.
+    return $this->code->emit(true);
+  }
 }
-

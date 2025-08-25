@@ -3,16 +3,16 @@
 namespace js4php5\compiler\constructs;
 
 /**
- * Construct to emulate JavaScript pre-minus-minus operator (--var)
+ * Construct to emulate JavaScript pre-decrement operator (--var)
  */
 class c_pre_mm extends BaseUnaryConstruct
 {
-    /**
-     * @param c_identifier $identifier
-     */
-    function __construct($identifier)
-    {
-        parent::__construct([$identifier]);
-    }
+  /**
+   * @param BaseConstruct $identifier Identifier to be decremented (must be a reference)
+   */
+  function __construct($identifier)
+  {
+    // Pre-decrement needs a reference to the operand, not its value
+    parent::__construct([$identifier], false);
+  }
 }
-

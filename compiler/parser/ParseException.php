@@ -3,36 +3,45 @@
 namespace js4php5\compiler\parser;
 
 use Exception;
+use Throwable;
 use js4php5\compiler\lexer\Point;
 use js4php5\compiler\lexer\Token;
 
 class ParseException extends Exception
 {
-    private $token;
-    private $pos;
+  /** @var Token */
+  private $token;
 
-    public function __construct($message = "", $token, Point $pos, $code = 0, Exception $previous = null)
-    {
-        parent::__construct($message, $code, $previous);
-        $this->token = $token;
-        $this->pos = $pos;
-    }
+  /** @var Point */
+  private $pos;
 
-    /**
-     * @return Point
-     */
-    public function getPos()
-    {
-        return $this->pos;
-    }
+  /**
+   * @param string         $message
+   * @param Token          $token
+   * @param Point          $pos
+   * @param int            $code
+   * @param Throwable|null $previous
+   */
+  public function __construct(string $message, Token $token, Point $pos, int $code = 0, ?Throwable $previous = null)
+  {
+    parent::__construct($message, $code, $previous);
+    $this->token = $token;
+    $this->pos   = $pos;
+  }
 
-    /**
-     * @return mixed
-     */
-    public function getToken()
-    {
-        return $this->token;
-    }
+  /**
+   * @return Point
+   */
+  public function getPos()
+  {
+    return $this->pos;
+  }
 
+  /**
+   * @return Token
+   */
+  public function getToken()
+  {
+    return $this->token;
+  }
 }
-

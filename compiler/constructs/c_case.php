@@ -2,38 +2,39 @@
 
 namespace js4php5\compiler\constructs;
 
-use js4php5\VarDumper;
-
 class c_case extends BaseConstruct
 {
+  /** @var BaseConstruct|null */
+  public $expr;
 
-    /** @var BaseConstruct */
-    public $expr;
+  /** @var BaseConstruct[] */
+  public $code;
 
-    /** @var c_statement[] */
-    public $code;
+  /** @var string Symbol name of the switch expression (e.g., "sw") */
+  public $e;
 
-    /**
-     * @param BaseConstruct $expr
-     * @param c_statement[] $code
-     */
-    function __construct($expr, $code)
-    {
-        $this->expr = $expr;
-        $this->code = $code;
+  /**
+   * @param BaseConstruct|null $expr  Case expression; null means "default"
+   * @param BaseConstruct[]    $code  Statements inside the case
+   * @param string             $switchSymbol Symbol for the switch expression variable
+   */
+  function __construct($expr, $code, $switchSymbol = 'sw')
+  {
+    $this->expr = $expr;
+    $this->code = is_array($code) ? $code : (array)$code;
+    $this->e    = $switchSymbol;
+  }
+
+  function emit($unusedParameter = false)
+  {
+    if ($this->expr === null) {
+      $o = "  default:\n";
+    } else {
+      $o = "  case (Runtime::js_bool(Runtime::expr_strict_equal(\$" . $this->e . "," . $this->expr->emit(true) . "))):\n";
     }
-
-    function emit($unusedParameter = false)
-    {
-        if (is_int($this->expr) && $this->expr == 0) {
-            $o = "  default:\n";
-        } else {
-            $o = "  case (Runtime::js_bool(Runtime::expr_strict_equal(\$" . $this->e . "," . $this->expr->emit(true) . "))):\n";
-        }
-        foreach ($this->code as $code) {
-            $o .= "    " . trim(str_replace("\n", "\n    ", $code->emit(true))) . "\n";
-        }
-        return $o;
+    foreach ($this->code as $code) {
+      $o .= "    " . trim(str_replace("\n", "\n    ", $code->emit(true))) . "\n";
     }
+    return $o;
+  }
 }
-
