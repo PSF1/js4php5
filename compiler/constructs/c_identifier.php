@@ -15,7 +15,7 @@ class c_identifier extends BaseConstruct
      */
     function __construct($id)
     {
-        $this->id = $id;
+        $this->id = (string) $id;
     }
 
     /**
