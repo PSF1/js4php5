@@ -4,41 +4,48 @@ namespace js4php5\compiler\parser;
 
 class ParseStackFrame
 {
+  private string $symbol;
+  private array $semantic;
+  public $state;
 
-    private $symbol;
-    private $semantic;
+  /**
+   * @param string $symbol
+   * @param mixed  $state
+   */
+  public function __construct($symbol, $state)
+  {
+    $this->symbol = $symbol;
+    $this->state = $state;
+    $this->semantic = [];
+  }
 
-    public $state;
+  public function shift($semantic): void
+  {
+    $this->semantic[] = $semantic;
+  }
 
-    /**
-     * @param string $symbol
-     * @param array $state
-     */
-    function __construct($symbol, $state)
-    {
-        $this->symbol = $symbol;
-        $this->state = $state;
-        $this->semantic = array();
-    }
+  public function fold($semantic): void
+  {
+    $this->semantic = [$semantic];
+  }
 
-    function shift($semantic)
-    {
-        $this->semantic[] = $semantic;
-    }
+  /**
+   * Return the semantic stack.
+   *
+   * @return array
+   */
+  public function semantic(): array
+  {
+    return $this->semantic;
+  }
 
-    function fold($semantic)
-    {
-        $this->semantic = array($semantic);
-    }
-
-    function semantic()
-    {
-        return $this->semantic;
-    }
-
-    function trace()
-    {
-        return "$this->symbol : $this->state";
-    }
+  /**
+   * Return a trace string "symbol : state".
+   *
+   * @return string
+   */
+  public function trace(): string
+  {
+    return "{$this->symbol} : {$this->state}";
+  }
 }
-

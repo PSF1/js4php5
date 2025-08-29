@@ -11,7 +11,7 @@ class ParseException extends Exception
     private $token;
     private $pos;
 
-    public function __construct($message = "", $token, Point $pos, $code = 0, Exception $previous = null)
+    public function __construct($message = "", $token = '', Point $pos = null, $code = 0, Exception $previous = null)
     {
         parent::__construct($message, $code, $previous);
         $this->token = $token;

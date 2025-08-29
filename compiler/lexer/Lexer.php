@@ -78,8 +78,13 @@ class Lexer
      */
     public function next()
     {
-        if (!is_array($this->pattern[$this->state])) {
-            throw new LexerException("No lexer state called '{$this->state}''.");
+
+        if ($this->stream === null) {
+          throw new LexerException('Lexer has not been started');
+        }
+
+        if (!isset($this->pattern[$this->state]) || !is_array($this->pattern[$this->state])) {
+            throw new LexerException("No lexer state called '{$this->state}'.");
         }
 
         $start = $this->stream->pos();

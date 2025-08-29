@@ -6,6 +6,13 @@ use js4php5\compiler\parser\set;
 
 class dfa
 {
+
+  public $states = array();
+  public $initial = '';
+  public $final = array();
+  public $delta = array();
+  public $mark = array();
+
     /*
     A DFA has a simpler representation than that of an NFA.
     It also has a bit of a different interface.
@@ -26,7 +33,7 @@ class dfa
     function add_state($label)
     {
         if ($this->has_state($label)) {
-            die ("Trying to add existing state to an DFA.");
+          throw new \RuntimeException("Trying to add existing state to a DFA.");
         }
         $this->states[] = $label;
         $this->final[$label] = false;

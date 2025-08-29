@@ -4,6 +4,8 @@ namespace js4php5\compiler\parser;
 
 class state_set_labeler
 {
+    public $map = [];
+
     function state_set_labeler()
     {
         $this->map = array();

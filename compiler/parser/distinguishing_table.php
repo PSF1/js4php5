@@ -4,6 +4,8 @@ namespace js4php5\compiler\parser;
 
 class distinguishing_table
 {
+  public $dist = array();
+
     function distinguishing_table()
     {
         $this->dist = array();

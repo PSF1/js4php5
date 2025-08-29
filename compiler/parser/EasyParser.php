@@ -35,22 +35,24 @@ class EasyParser extends Parser
   function reduce($action, $tokens)
   {
     $call = $this->call[$action];
-
-    // Forma 1: array "plano" de items (objetos/valores)
-    $outer = is_array($tokens) ? $tokens : [$tokens];
-
-    try {
-      // La mayoría de handlers de jsly esperan esta forma
-      return jsly::$call($outer);
-    } catch (\Throwable $e) {
-      // Forma 2: array de arrays (cada item envuelto),
-      // para handlers que indexan $tokens[n][m]
-      $wrapped = [];
-      foreach ($outer as $t) {
-        $wrapped[] = is_array($t) ? $t : [$t];
-      }
-      return jsly::$call($wrapped);
-    }
+    return jsly::$call($tokens);
+//    $call = $this->call[$action];
+//
+//    // Forma 1: array "plano" de items (objetos/valores)
+//    $outer = is_array($tokens) ? $tokens : [$tokens];
+//
+//    try {
+//      // La mayoría de handlers de jsly esperan esta forma
+//      return jsly::$call($outer);
+//    } catch (\Throwable $e) {
+//      // Forma 2: array de arrays (cada item envuelto),
+//      // para handlers que indexan $tokens[n][m]
+//      $wrapped = [];
+//      foreach ($outer as $t) {
+//        $wrapped[] = is_array($t) ? $t : [$t];
+//      }
+//      return jsly::$call($wrapped);
+//    }
   }
 
   /**

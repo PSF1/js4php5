@@ -59,7 +59,7 @@ use js4php5\runtime\jsObject;
 class JS
 {
 
-    const VERSION = '0.0.2';
+    const VERSION = '0.0.3';
 
     /** String prefixed to script IDs to make a class name. */
     const CLASS_PREFIX = 'js4php5_';

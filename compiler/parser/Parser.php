@@ -11,9 +11,8 @@ abstract class Parser
 {
 
     protected $pda;
-
     protected $action;
-
+    protected $start;
     protected $delta;
 
     public function __construct($pda)
@@ -68,7 +67,7 @@ abstract class Parser
                 case 'do':
                     $semantic = $this->reduce($step[1], $tos->semantic());
                     if (empty($stack)) {
-                        $strategy->assertDone($token, $lex);
+                        $strategy?->assertDone($token, $lex);
                         return $semantic;
                     } else {
                         $tos = array_pop($stack);
@@ -89,7 +88,7 @@ abstract class Parser
 
                 case 'error':
                     $stack[] = $tos;
-                    $strategy->stuck($token, $lex, $stack);
+                    $strategy?->stuck($token, $lex, $stack);
                     break;
 
                 default:

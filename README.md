@@ -192,6 +192,8 @@ Things we've done prior to the initial github upload:
 
 Added `phpunit.xml.dist` file to execute tests with this project installed inside the vendor/ folder.
 
+DDEV example: `ddev exec ./vendor/bin/phpunit -c vendor/hiltonjanfield/js4php5/phpunit.xml.dist`
+
 ## Todo
 
 Things left to do:

@@ -4,36 +4,64 @@ namespace js4php5\compiler\parser;
 
 class enfa
 {
-    # Extended epsilon NFA in normal form.
-    function enfa()
+    # Contains a list of labels
+    public $states = array();
+    # These are hashes with state labels for keys:
+    # sub-hash from symbol to label-list
+    public $delta = array();
+    # label-list
+    public $epsilon = array();
+    # distinguishing mark
+    public $mark = array();
+
+    # Now we can add the initial and final states:
+    public $initial = null;
+    public $final = null;
+
+    /**
+     * Modern constructor (replaces legacy enfa()).
+     * Initializes structures and creates initial/final states.
+     */
+    public function __construct()
     {
-        # $this->alphabet = array();    # We don't care
-        $this->states = array();    # Contains a list of labels
+      // $this->alphabet = []; // Not used
+      $this->states  = [];
+      $this->delta   = [];
+      $this->epsilon = [];
+      $this->mark    = [];
 
-        # These are hashes with state labels for keys:
-        $this->delta = array(); # sub-hash from symbol to label-list
-        $this->epsilon = array();   # label-list
-        $this->mark = array();      # distinguishing mark
-
-        # Now we can add the initial and final states:
-        $this->initial = $this->add_state(Helpers::gen_label());
-        $this->final = $this->add_state(Helpers::gen_label());
+      // Create initial and final states
+      $this->initial = $this->add_state(Helpers::gen_label());
+      $this->final   = $this->add_state(Helpers::gen_label());
     }
 
     function eclose($label_list)
     {
-        $states = array_count_values($label_list);
-        $queue = array_keys($states);
-        while (count($queue) > 0) {
-            $s = array_shift($queue);
-            foreach ($this->epsilon[$s] as $t) {
-                if (!isset($states[$t])) {
-                    $states[$t] = true;
-                    $queue[] = $t;
-                }
-            }
+      // Build a set of states using labels as keys to avoid array_count_values warnings
+      // Use associative array as a set
+      $states = [];
+      $queue = [];
+
+      // Initialize set and queue with given labels
+      foreach ($label_list as $lbl) {
+        $states[$lbl] = true; // Mark label as seen
+        $queue[] = $lbl;      // Enqueue label for BFS
+      }
+
+      while (!empty($queue)) {
+        $s = array_shift($queue);
+        if (empty($this->epsilon[$s])) {
+          continue;
         }
-        return array_keys($states);
+        foreach ($this->epsilon[$s] as $t) {
+          if (!isset($states[$t])) {
+            $states[$t] = true; // Add new reachable state
+            $queue[] = $t;      // Enqueue it
+          }
+        }
+      }
+
+      return array_keys($states);
     }
 
     function any_are_final($label_list)
@@ -45,7 +73,7 @@ class enfa
     {
         $mark = Helpers::$FA_NO_MARK;
         foreach ($label_list as $label) {
-            $mark = min($mark, $this->mark[$label]);
+            $mark = min($mark, ($this->mark[$label] ?? PHP_INT_MAX));
         }
         return $mark;
     }
@@ -53,12 +81,12 @@ class enfa
     function add_state($label)
     {
         if (isset($this->delta[$label])) {
-            die ("Trying to add existing state to an NFA.");
+          throw new \RuntimeException("Trying to add existing state to an NFA.");
         }
         $this->states[] = $label;
         $this->delta[$label] = array();
         $this->epsilon[$label] = array();
-        $this->mark[$label] = FA_NO_MARK;
+        $this->mark[$label] = Helpers::$FA_NO_MARK;
         return $label;
     }
 

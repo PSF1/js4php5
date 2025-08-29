@@ -4,16 +4,9 @@ namespace js4php5\compiler\constructs;
 
 use js4php5\compiler\Compiler;
 
-/**
- * Function definition construct.
- *
- * Accepts: [id, params[], bodyNode]
- * - id: string function name in JS source
- * - params: array of parameter names (strings)
- * - body: a node with emit() that produces the function body
- */
 class c_function_definition extends BaseConstruct
 {
+
   /** @var string JS function name */
   public $id;
 
@@ -26,45 +19,44 @@ class c_function_definition extends BaseConstruct
   /** @var string Generated PHP function identifier */
   public $phpid;
 
-  /**
-   * @param array{id:string,params:array,body:BaseConstruct}|array $args [id, params[], bodyNode]
-   */
-  function __construct($args)
+  static $in_function = 0;
+
+  function __construct($a)
   {
-    // Expect [$id, $params, $body]
-    $this->id     = (string) ($args[0] ?? '');
-    $this->params = array_values(is_array($args[1] ?? []) ? ($args[1] ?? []) : []);
-    $this->body   = $args[2] ?? null;
+    list($this->id, $this->params, $this->body) = $a;
+    $this->phpid = Compiler::generateSymbol("jsrt_uf");
+  }
 
-    // Generate a unique id for the function (used by Runtime)
-    $this->phpid = Compiler::generateSymbol('uf');
+  function toplevel_emit()
+  {
+    $o = "    static public function " . $this->phpid . "() {\n";
+    $o .= "        " . trim(str_replace("\n", "\n        ", $this->body));
+    $o .= "\n    }\n\n";
+    return $o;
+  }
 
-    // Inform source collector (if needed by the compiler pipeline)
-    if (method_exists(c_source::class, 'addFunctionDefinition')) {
-      c_source::addFunctionDefinition($this);
+  function function_emit()
+  {
+    self::$in_function++;
+    $this->body = $this->body->emit(true); // do it early, to catch inner functions
+    self::$in_function--;
+    c_source::addFunctionDefinition($this);
+    $id = "";
+    if (true or $this->id != '') {
+      $id = ",'" . $this->id . "'";
     }
+    $p = "";
+    if (count($this->params) > 0) {
+      $p = ",array('" . implode("','", $this->params) . "')";
+    }
+    return "Runtime::define_function('" . $this->phpid . "'" . $id . $p . ");\n";
   }
 
-  /**
-   * Pre-emit the function definition and return the define_function call.
-   * The actual function body is expected to be injected by the compilation pipeline.
-   */
-  public function function_emit(): string
+  function emit($unusedParameter = false)
   {
-    // Prepare parameter list
-    $quoted = array_map(static function ($p) {
-      return "'" . (string)$p . "'";
-    }, $this->params);
-
-    // Return a Runtime::define_function('<phpid>','<name>', array('p1','p2'));
-    return "Runtime::define_function('{$this->phpid}','{$this->id}',array(" . implode(',', $quoted) . "));\n";
-  }
-
-  /**
-   * Emit the expression-time handle to this function: a Runtime function id.
-   */
-  function emit($getValue = false)
-  {
-    return "Runtime::function_id('{$this->phpid}')";
+    #-- if this gets called, we're a function inside an expression.
+    c_source::addFunctionExpression($this);
+    #-- XXX output something that will return a handle to the function.
+    return "Runtime::function_id('" . $this->phpid . "')";
   }
 }

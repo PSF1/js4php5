@@ -9,7 +9,7 @@ class c_with extends BaseConstruct
 
     /** @var BaseConstruct */
     public $statement;
-  
+
     function __construct($expr, $statement)
     {
         list($this->expr, $this->statement) = func_get_args();

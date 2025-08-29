@@ -7,43 +7,43 @@ File: set.so.php
 License: GPL
 Purpose: We should really have a "set" data type. It's too useful.
 */
+class set {
 
-class set
-{
-    function set($list = array())
-    {
-        $this->data = array_count_values($list);
-    }
+  /** @var array<string, mixed> */
+  public array $data = [];
 
-    function has($item)
-    {
-        return isset($this->data[$item]);
-    }
+  /**
+   * Constructor accepts a list of scalar items (string|int).
+   *
+   * @param array<int|string> $list
+   */
+  public function __construct(array $list = []) {
+    // array_count_values requires scalar values (strings/ints).
+    $this->data = array_count_values($list);
+  }
 
-    function add($item)
-    {
-        $this->data[$item] = true;
-    }
+  public function has($item): bool {
+    return isset($this->data[$item]);
+  }
 
-    function del($item)
-    {
-        unset($this->data[$item]);
-    }
+  public function add($item): void {
+    $this->data[$item] = TRUE;
+  }
 
-    function all()
-    {
-        return array_keys($this->data);
-    }
+  public function del($item): void {
+    unset($this->data[$item]);
+  }
 
-    function one()
-    {
-        return key($this->data);
-    }
+  public function all(): array {
+    return array_keys($this->data);
+  }
 
-    function count()
-    {
-        return count($this->data);
-    }
+  public function one(): mixed {
+    return key($this->data);
+  }
+
+  public function count(): int {
+    return count($this->data);
+  }
+
 }
-
-

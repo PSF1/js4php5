@@ -34,24 +34,5 @@ class DefaultParserStrategy extends ParserStrategy
             "Parser stuck; source and grammar do not agree. Can't tell what to do with token.",
             $token,
             $token->getStart());
-
-//        Helpers::send_parse_error_css_styles();
-//
-?>
-<!--        <hr/>The LR parser is stuck. Source and grammar do not agree.<br/>-->
-<!--        Looking at token:-->
-<!--        --><?php
-//        Helpers::span('term', $token->text, $token->type);
-//        echo ' [ ' . $token->type . ' ]';
-//        echo "<br/>\n";
-//        $lex->report_error();
-//        echo "<hr/>\n";
-//        echo "Backtrace Follows:<br/>\n";
-//        # pr($stack);
-//        while (count($stack)) {
-//            $tos = array_pop($stack);
-//            echo $tos->trace() . "<br/>\n";
-//        }
-//        throw new parse_error("Can't tell what to do with " . $token->type . ".");
     }
 }
