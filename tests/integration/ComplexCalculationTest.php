@@ -43,7 +43,7 @@ function compute(n) {
   return mul(total, n);
 }
 
-compute(ARG_N); // ARG_N will be replaced by test
+return compute(ARG_N); // ARG_N will be replaced by test
 JS;
 
   public static function provider(): array

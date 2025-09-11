@@ -33,6 +33,9 @@ class c_source extends BaseConstruct
      */
     function __construct($statements = array(), $functions = array())
     {
+        if (!c_source::$that) {
+          c_source::$that = new \stdClass();
+        }
         $this->code = $statements;
         $this->functions = $functions;
         $this->vars = array();
